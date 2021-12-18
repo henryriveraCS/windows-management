@@ -8,7 +8,7 @@ param(
     [string[]] $Groups
 )
 
-#Specify that this script is being remotely
+#Specify that this script is being remotely executed(can be updated if needed)
 Set-ExecutionPolicy RemoteSigned
 #connect & login to exhchange online
 try{
