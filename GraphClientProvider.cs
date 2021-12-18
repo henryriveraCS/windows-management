@@ -105,12 +105,6 @@ public class GraphClientProvider
             }
             return true;
         }
-        return true;
-    }
-
-    //will assign security groups to the specified user
-    public bool AssignSecurityDGroupsToUser(User user, List<string> groups)
-    {
         return false;
     }
 
@@ -146,7 +140,9 @@ public class GraphClientProvider
         if(tmpJSON.AvailableUnits.HasValue && tmpJSON.ConsumedUnits.HasValue){
             tmpJSON.LicensesLeft = tmpJSON.AvailableUnits.Value - tmpJSON.ConsumedUnits.Value;
             return tmpJSON;
-        }
+        } else{
+	    tmpJSON.LicensesLeft = 0;
+	}
         return 0;
     }
 
@@ -175,6 +171,7 @@ public class GraphClientProvider
             }
         };
 
+	//change to true if you want to save the email sent
         var saveToSentItems = false;
 
         await graphClient.Me
@@ -221,11 +218,12 @@ public class GraphClientProvider
 	        Guid.Parse("bea13e0c-3828-4daa-a392-28af7ff61a0f")
         };
 
-
         //get the userID bassed off their UPN
         var user = graphClient.Users[userUPN].Request().GetAsync();
-        //update user location
         var oUser = user.Result;
+	if(oUser == null){
+		return false;
+	}
         string userID = oUser.Id;
 
         await graphClient.Users[userID].AssignLicense(licensesToAdd, licensesToRemove)
