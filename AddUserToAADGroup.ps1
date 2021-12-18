@@ -10,7 +10,7 @@ param(
 
 #Specify that this script is being remotely executed(can be updated if needed)
 Set-ExecutionPolicy RemoteSigned
-#connect & login to exhchange online
+#connect & login to exchange online
 try{
     Connect-ExchangeOnline -UserPrincipalName $LoginEmail
     $getSessions = Get-PSSession | Select-Object -Property State, Name
