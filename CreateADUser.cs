@@ -255,7 +255,7 @@ public class LocalActiveDirectoryUser
 				tmpFullName = empFirstName + " ";
 			} else{ 
 				_errorMsg = "Please provide a FirstName key value in order to create an AD User";
-				return false 
+				return false;
 			}
 			if(empMiddleName != ""){
 				tmpFullName = tmpFullName + empMiddleName + " ";
