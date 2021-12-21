@@ -23,16 +23,14 @@ namespace SampleNamespace
 	public class GraphClientProvider
 	{
 	    private GraphServiceClient graphClient;
-	    public GraphServiceClient GetGraphClient()
-	    {
+	    public GraphServiceClient GetGraphClient(){
 			return graphClient;
 	    }
 
 	    //this is used to sign in a user to a graph API - it will prompt for MFA if enabled
-	    public bool ConnectGraphClient(List<string> Scopes, string TenantID, string ClientID){
-			var options = new TokenCredentialOptions
-			{
-		    	AuthorityHost = AzureAuthorityHosts.AzurePublicCloud
+	    public bool Connect(List<string> Scopes, string TenantID, string ClientID){
+			var options = new TokenCredentialOptions{
+		    		AuthorityHost = AzureAuthorityHosts.AzurePublicCloud
 			};
 
 			Func<DeviceCodeInfo, CancellationToken, Task> callback = (code, cancellation) => {
@@ -41,17 +39,17 @@ namespace SampleNamespace
 
 			var deviceCodeCredential = new DeviceCodeCredential(callback, TenantID, ClientID, options);
 		
-			graphClient = new GraphServiceClient(deviceCodeCredential, scopes);
+			graphClient = new GraphServiceClient(deviceCodeCredential, Scopes);
 			return true;
 		}
 	    
 	    //Whenever possible use ConnectGraphClient instead of this function
 	    //Connects to an AAD account without MFA-enabled using username + password
-	    public bool UnsecuredConnectGraphClient(string Username, SecureString Password, 
-											List<string> scopes, 
-												string TenantID, 
-												string ClientID)
-	    {
+	    public bool UnsecuredConnect(string Username, SecureString Password, 
+									List<string> Scopes, 
+									string TenantID, 
+									string ClientID)
+		{
 			//OPTIONS BELOW IS FOR USERNAME/PASSWORD authorization to client
 			var pca = PublicClientApplicationBuilder
 		   	.Create(ClientID)
@@ -69,18 +67,16 @@ namespace SampleNamespace
 	    }
 
 	    //used to get user object from AAD
-	    public async Task<User> GetUser(string userUPN)
-	    {
-			var user = await graphClient.Users[userUPN].Request().GetAsync();
+	    public async Task<User> GetUser(string UPN){
+			var user = await graphClient.Users[UPN].Request().GetAsync();
 			return user;
 		}
 
 		//NOTE this only works for specific distribution groups
 		//See ./AddUserToAADGroup.ps1 for adding users to mail-enabled security groups
 		//assigns all passed Microsoft 365 groups to the specified user
-		public async Task<bool> AssignAADGroupsToUser(User user, List<string> Groups)
-		{
-			if(groups != new List<string>() && user != null){
+		public async Task<bool> AssignAADGroupsToUser(User user, List<string> Groups){
+			if(Groups != new List<string>() && user != null){
 				foreach(string group in Groups){
 					await graphClient.Groups[group].Members.References
 						.Request()
@@ -91,8 +87,7 @@ namespace SampleNamespace
 			return false;
 	    }
 
-	    public class LicenseDataJSON
-	    {
+	    public class LicenseDataJSON{
 			public string LicenseSkuId{get; set;}
 			public int? ConsumedUnits{get; set;}
 			public int? AvailableUnits{get; set;}
@@ -104,9 +99,8 @@ namespace SampleNamespace
 
 	    //gets data available from license
 	    //https://docs.microsoft.com/en-us/graph/api/subscribedsku-list?view=graph-rest-1.0&tabs=http
-	    public async Task<LicenseDataJSON> CheckLicenseAmount(string licenseSkuName)
-	    {
-			var subscribedSku = await graphClient.SubscribedSkus[licenseSkuName].Request().GetAsync();
+	    public async Task<LicenseDataJSON> CheckLicenseAmount(string LicenseSkuName){
+			var subscribedSku = await graphClient.SubscribedSkus[LicenseSkuName].Request().GetAsync();
 			LicenseDataJSON tmpJSON = new LicenseDataJSON();
 			tmpJSON.AvailableUnits = subscribedSku.PrepaidUnits.Enabled;
 			tmpJSON.ConsumedUnits = subscribedSku.ConsumedUnits;
@@ -115,14 +109,14 @@ namespace SampleNamespace
 			tmpJSON.CapabilityStatus = subscribedSku.CapabilityStatus.ToString();
 			tmpJSON.AppliesTo = subscribedSku.AppliesTo;
 
-		//check if values exist and return them
+			//check if values exist and return them
 			if(tmpJSON.AvailableUnits.HasValue && tmpJSON.ConsumedUnits.HasValue){
 		    	tmpJSON.LicensesLeft = tmpJSON.AvailableUnits.Value - tmpJSON.ConsumedUnits.Value;
 		    	return tmpJSON;
 			} else{
 		    	tmpJSON.LicensesLeft = 0;
 			}
-			return 0;
+			return new LicenseDataJSON();
 	    }
 
 	    //Send mail out as the logged-in graph user
@@ -130,8 +124,7 @@ namespace SampleNamespace
 	    //body = message of the email
 	    //recipient = who receives it
 	    //saveSentItems = whether or not to save it in the sent box
-	    public async Task<bool> SendMail(string subject, string body, string recipient, bool saveSentItems)
-	    {
+	    public async Task<bool> SendMail(string subject, string body, string recipient, bool saveSentItems){
 			var email = new Message{
 				Subject = subject,
 				Body = new ItemBody
@@ -149,7 +142,7 @@ namespace SampleNamespace
 			};
 
 			await graphClient.Me
-		    	.SendMail(email, saveToSentItems)
+		    	.SendMail(email, saveSentItems)
 		    	.Request()
 		    	.PostAsync();
 
@@ -157,8 +150,7 @@ namespace SampleNamespace
 	    }
 
 	    //given a list of group GUID's, assign a user instance to each group
-	    public async Task<bool> AssignGroupToUser(string UserUPN, List<string> Groups)
-	    {
+	    public async Task<bool> AssignGroupToUser(string UserUPN, List<string> Groups){
 			var user = await GetUser(UserUPN);
 				if(user == null){
 					return false;
@@ -173,13 +165,12 @@ namespace SampleNamespace
 
 	    	//used to assign a license to a user in AAD
 	    	//https://docs.microsoft.com/en-us/azure/active-directory/enterprise-users/licensing-service-plan-reference
-	    public async Task<bool> AssignLicenseToUser(List<string> LicenseList, string UserUPN)
-	    {
+	    public async Task<bool> AssignLicenseToUser(List<string> LicenseList, string UserUPN){
 			var licensesToAdd = new List<AssignedLicense>();
 			var licensesToRemove = new List<Guid>();
 
-			foreach(string licenseGUID in licenseList){
-				Guid licenseSkuId = Guid.Parse(licenseGuid);
+			foreach(string LicenseGUID in LicenseList){
+				Guid licenseSkuId = Guid.Parse(LicenseGUID);
 				var license = new AssignedLicense(){SkuId = licenseSkuId};
 				licensesToAdd.Add(license);
 			}
@@ -189,7 +180,7 @@ namespace SampleNamespace
 			};
 
 			//get the userID bassed off their UPN
-			var user = graphClient.Users[userUPN].Request().GetAsync();
+			var user = graphClient.Users[UserUPN].Request().GetAsync();
 			var oUser = user.Result;
 			if(oUser == null){
 				return false;
