@@ -60,7 +60,6 @@ if(connected){
         //john@company.com now has a AAD premium P2 license and is in Group1 + Group2
     }
 }
-    
 ```
 
 
@@ -69,7 +68,7 @@ if(connected){
 
 ```
 //Create a user called "John Smith" with the e-mail address and UPN "john@company.com"
-//inside of OU: DomainName.COM/America/Washington/Sales/Users
+//inside of OU: Company.COM/America/Washington/Sales/Users
 ActiveDirectoryUser adUser = new ActiveDirectoryUser();
 bool connected = adUser.Connect("Admin", "Password", "Company", "COM");
 if(connected){
@@ -88,8 +87,7 @@ if(connected){
       //An error occurred, you can get the error message to see what went wrong
       Console.WriteLine(adUser.GetExceptionMessage());
     }
-}
-    
+}  
 ```
 
 <p>All code is written under the MIT license. Use at your own discretion.</p>
