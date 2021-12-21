@@ -22,14 +22,12 @@
 </ul>
 <br>
 
-<h2>Add User to Distribution Group via Powershell:</h2>
+<h2>Add User to Mail-Enabled Security Group via Powershell:</h2>
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
 <p>Open powershell <code>cd</code> into the directory where the file is saved and run:</p>
 
 ```
 ./AddUserToAADGroup.ps1 -LoginEmail admin@company.com -UserUPN userToAdd@company.com -Groups Group1, Group2, Group3
-
-    
 ```
 
 <p> If the user running the script already has admin access and is logged in currently (admin@company.com is running it as themselves) then no prompt will appear. If admin@company.com is trying to run the script as otherAdmin@company.com then a login+MFA pop-up will appear and prompt the user to sign in.</p>
