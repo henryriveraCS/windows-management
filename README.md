@@ -34,7 +34,7 @@
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
 <p>Open powershell <code>cd</code> into the directory where the file is saved and run:</p>
 
-```
+```powershell
 ./AddUserToAADGroup.ps1 -LoginEmail admin@company.com -UserUPN userToAdd@company.com -Groups Group1, Group2, Group3
 ```
 
@@ -44,7 +44,7 @@
 <h2>Adding User to AAD Groups and Assigning licenses via the Graph API</h2>
 <p>Refer to <code>GraphClientProvider.cs</code> for all required libraries.</p>
 
-```
+```csharp
 //Assuming we want to give our AAD user "john@company.com" an AAD Premium P2 license
 //and also add them into our mail AAD groups Group1 + Group2
 string UPN = "john@company.com";
@@ -74,7 +74,7 @@ if(connected){
 <h2>Creating Users in Local AD instance(only on Windows)</h2>
 <p>See <code>ManageADUser.cs</code> for the libraries required.</p>
 
-```
+```csharp
 //Create a user called "John Smith" with the e-mail address and UPN "john@company.com"
 //inside of OU: Company.COM/America/Washington/Sales/Users
 ActiveDirectoryUser adUser = new ActiveDirectoryUser();
