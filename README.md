@@ -10,7 +10,7 @@
   <li>Get information about a license(total licenses bought, licenses left, SkuID, etc)</li>
   <li>Send mail as the user</li>
 </ul>
-<h3>CreateADUser.cs</h3>
+<h3>ManageADUser.cs</h3>
 <ul>
   <li>Create users in a specified AD OU</li>
   <li>Populate the AD User information <code>General, Account, Member of, Profile, etc</code> while creating the user(will be separated into a separate function soon)</li>
@@ -21,6 +21,14 @@
   <li>Add user to mail-enabled security groups.</li>
 </ul>
 <br>
+
+<h2>TODO:</h2>
+<ul>
+  <li>Allow deletion of AD user instance given a UPN</li>
+  <li>Allow removal of licenses via graphprovider</li>
+  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
+</ul>
+
 
 <h2>Add User to Mail-Enabled Security Group via Powershell:</h2>
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
