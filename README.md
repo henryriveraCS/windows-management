@@ -10,7 +10,7 @@
   <li>Get information about a license(total licenses bought, licenses left, SkuID, etc)</li>
   <li>Send mail as the user</li>
 </ul>
-<h3>CreateADUser.cs</h3>
+<h3>ManageADUser.cs</h3>
 <ul>
   <li>Create users in a specified AD OU</li>
   <li>Populate the AD User information <code>General, Account, Member of, Profile, etc</code> while creating the user(will be separated into a separate function soon)</li>
@@ -22,11 +22,19 @@
 </ul>
 <br>
 
+<h2>TODO:</h2>
+<ul>
+  <li>Allow deletion of AD user instance given a UPN</li>
+  <li>Allow removal of licenses via graphprovider</li>
+  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
+</ul>
+
+
 <h2>Add User to Mail-Enabled Security Group via Powershell:</h2>
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
 <p>Open powershell <code>cd</code> into the directory where the file is saved and run:</p>
 
-```
+```powershell
 ./AddUserToAADGroup.ps1 -LoginEmail admin@company.com -UserUPN userToAdd@company.com -Groups Group1, Group2, Group3
 ```
 
@@ -36,7 +44,7 @@
 <h2>Adding User to AAD Groups and Assigning licenses via the Graph API</h2>
 <p>Refer to <code>GraphClientProvider.cs</code> for all required libraries.</p>
 
-```
+```csharp
 //Assuming we want to give our AAD user "john@company.com" an AAD Premium P2 license
 //and also add them into our mail AAD groups Group1 + Group2
 string UPN = "john@company.com";
@@ -60,16 +68,15 @@ if(connected){
         //john@company.com now has a AAD premium P2 license and is in Group1 + Group2
     }
 }
-    
 ```
 
 
 <h2>Creating Users in Local AD instance(only on Windows)</h2>
 <p>See <code>ManageADUser.cs</code> for the libraries required.</p>
 
-```
+```csharp
 //Create a user called "John Smith" with the e-mail address and UPN "john@company.com"
-//inside of OU: DomainName.COM/America/Washington/Sales/Users
+//inside of OU: Company.COM/America/Washington/Sales/Users
 ActiveDirectoryUser adUser = new ActiveDirectoryUser();
 bool connected = adUser.Connect("Admin", "Password", "Company", "COM");
 if(connected){
@@ -88,8 +95,7 @@ if(connected){
       //An error occurred, you can get the error message to see what went wrong
       Console.WriteLine(adUser.GetExceptionMessage());
     }
-}
-    
+}  
 ```
 
 <p>All code is written under the MIT license. Use at your own discretion.</p>
