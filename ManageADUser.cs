@@ -19,6 +19,7 @@ namespace SampleNamespace
 	{
 		//keeping track of internal variables to be used by different functions once this class is initialized
 		private string _exceptionMsg = "";
+		private string _stackMsg = "";
 		private string _domainName = "";
 		private string _tld = "";
 		private string _fullName = "";
@@ -41,15 +42,33 @@ namespace SampleNamespace
 				return "No error exception set.\n";
 			}
 		}
+
+		//used to add values to the class stack message
+		private void AddStackMessage(string StackMessage){
+			_stackMsg += StackMessage + "\n";
+		}
 		
 		/*
+			To make it easier to debug exception messages a string version of the stack trace is returned alongside the error
 			Format of exception messages will be:
-			ERROR AT: MyADClass - UpdateProfile
-			The specified directory service attribute or value does not exist
+			ERROR AT MyADClass - UpdateProfile:
+			Error Message: The specified directory service attribute or value does not exist
+			STACK TRACE:
+			Connecting to Directory: LDAP://Company.com
+			Successfully connected to directory
+			Creating User Instance: John Smith
+			User Instance Created
+			Updating Profile
+			Setting Profile Path to: MyPath
+			Attempting to commit changes <--- exception occurs after this
+			======================================================
+			The above output means that an error occured while trying to update the profile path for the user John Smith.
+			Double-check your input parameters contain the key pair "@ProfilePath":"MyPath"
+			and make sure that the _user instance exists before calling UpdateProfile()
 		*/
 		//used during exceptions to log errors
 		private void SetExceptionMessage(string MethodName, string ExceptionMessage){
-			_exceptionMsg = "ERROR AT: " + GetClassName() + " - " + MethodName + ":\n" + ExceptionMessage;
+			_exceptionMsg = "ERROR AT " + GetClassName() + " - " + MethodName + ":\nError Message:" + ExceptionMessage + "\nSTACK TRACE:\n" + _stackMsg;
 		}
 
 		//Set's exception message whenever UserEntry is not initiated correctly.
@@ -92,15 +111,12 @@ namespace SampleNamespace
 
 		//sets password for user entry
 		public bool SetPassword(string Password){
-			if(_user != new DirectoryEntry()){
-				try{
-					_user.Invoke("SetPassword", Password);
-					_user.CommitChanges();
-					return true;
-				} catch(Exception e){
-					SetExceptionMessage(nameof(SetPassword), e.Message);
-					return false;
-				}
+			if(UserExists(nameof(UpdateGeneral)) == false){
+				return false;
+			}
+			_user.Invoke("SetPassword", Password);
+			if(SaveChanges(nameof(SetPassword))){
+				return true;
 			}
 			return false;
 		}
@@ -125,9 +141,12 @@ namespace SampleNamespace
 
 		//returns an authenticated entry directory if the domain was successfully connected to
 		private DirectoryEntry CreateDirectoryEntry(string Username, string Password, string DomainName, string TLD){
+			string fullPath = "LDAP://" + DomainName + "." + TLD;
+			AddStackMessage("Attempting to join directory: " + fullPath);
 			try{
-				DirectoryEntry ldapConnection = new DirectoryEntry("LDAP://" + DomainName + "." + TLD, Username, Password);
+				DirectoryEntry ldapConnection = new DirectoryEntry(fullPath, Username, Password);
 				ldapConnection.AuthenticationType = AuthenticationTypes.Secure;
+				AddStackMessage("Successfully connected to:" + fullPath);
 				return ldapConnection;
 			} catch(Exception e){
 				SetExceptionMessage(nameof(CreateDirectoryEntry), e.Message);
@@ -163,10 +182,13 @@ namespace SampleNamespace
 		//This should always be executed first in order to properly execute other functions
 		//verifies the admin credentials are valid by signing in and sets internal AD values
 		public bool Connect(string Username, string Password, string DomainName, string TLD){
+			AddStackMessage(nameof(Connect) + " has been initialized. Resetting _baseOU");
 			_baseOU = new DirectoryEntry();
 			try{
+				AddStackMessage("Attempting to authenticate into: " + DomainName + "." + TLD);
 				_baseOU = CreateDirectoryEntry(Username, Password, DomainName, TLD);
 				if(_baseOU != new DirectoryEntry()){
+					AddStackMessage("Successfully connected to Directory\nSetting internal domain and tld");
 					_domainName = DomainName;
 					_tld = TLD;
 					return true;
@@ -232,242 +254,290 @@ namespace SampleNamespace
 		Member Of:
 				*See AssignLocalGroupsToUser for more information*
 		*/
+
+		//used to check that a user instance exists. Returns true if yes,
+		//sets an exception method and returns false if no
+		private bool UserExists(string MethodName){
+			if(_user != new DirectoryEntry() && _user != _userOU){
+				AddStackMessage("User Instance exists under: " + MethodName);
+				return true;
+			}
+			SetExceptionMessage(MethodName, "User instance not set: " + _user.Name + "--" + _user.Path);
+			return false;
+		}
+
+		//used by updateTabs() methods to add messages to stack
+		//E.G : "Setting FirstName to: John", "Setting LastName to: Smith", etc
+		private void AddTabMessageToStack(string DataField, string DataValue){
+			AddStackMessage("Setting " + DataField + " to: " + DataValue);
+		}
+
+		//used to log + commit user changes. Will return True if commit didn't cause an exception.
+		private bool SaveChanges(string MethodName){
+			AddStackMessage("Atttempting to commit changes for: " + MethodName);
+			try{
+				_user.CommitChanges();
+				AddStackMessage("Successfully commited changes for " + MethodName);
+				return true;
+			} catch(Exception e){
+				SetExceptionMessage(MethodName, e.Message);
+				return false;
+			}
+		}
 		//WIP - WORKING ON FIXES SO EVERYTHING IS WRAPPED IN A TRY CATCH UNTIL THEN
 		//updates Organization tab
 		public bool UpdateOrganization(Dictionary<string, string> Parameters){
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "JobTitle"){
-						_user.Properties["title"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Department"){
-						_user.Properties["department"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Company"){
-						_user.Properties["company"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Manager"){
-						_user.Properties["manager"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "DirectReports"){
-						_user.Properties["directReports"].Value = kvp.Value;
-					}
-				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateOrganization), e.Message);
+			if(UserExists(nameof(UpdateOrganization)) == false){
 				return false;
+			};
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "JobTitle"){
+					AddTabMessageToStack(kvp.Key, kvp.Value);
+					_user.Properties["title"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Department"){
+					AddTabMessageToStack(kvp.Key, kvp.Value);
+					_user.Properties["department"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Company"){
+					AddTabMessageToStack(kvp.Key, kvp.Value);
+					_user.Properties["co"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Manager"){
+					AddTabMessageToStack(kvp.Key, kvp.Value);
+					_user.Properties["manager"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "DirectReports"){
+					AddTabMessageToStack(kvp.Key, kvp.Value);
+					_user.Properties["directReports"].Value = kvp.Value;
+				}
 			}
+			if(SaveChanges(nameof(UpdateOrganization))){
+				return true;
+			}
+			return false;
 		}
 
 		//updates Telephone Tab
 		public bool UpdateTelephone(Dictionary<string, string> Parameters){
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "HomePhone"){
-						_user.Properties["homePhone"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Page"){
-						_user.Properties["pager"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Mobile"){
-						_user.Properties["mobile"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Fax"){
-						_user.Properties["facsimileTelephoneNumber"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "IP"){
-						_user.Properties["ipPhone"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Notes"){
-						_user.Properties["info"].Value = kvp.Value;
-					}
-				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateTelephone), e.Message);
+			if(UserExists(nameof(UpdateOrganization)) == false){
 				return false;
+			};
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "HomePhone"){
+					_user.Properties["homePhone"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Page"){
+					_user.Properties["pager"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Mobile"){
+					_user.Properties["mobile"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Fax"){
+					_user.Properties["facsimileTelephoneNumber"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "IP"){
+					_user.Properties["ipPhone"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Notes"){
+					_user.Properties["info"].Value = kvp.Value;
+				}
 			}
+			if(SaveChanges(nameof(UpdateTelephone))){
+				return true;
+			}
+			return false;
 		}
 		//updates Profile tab
 		public bool UpdateProfile(Dictionary<string, string> Parameters){
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "ProfilePath"){
-						_user.Properties["profilePath"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "ScriptPath"){
-						_user.Properties["scriptPath"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "HomeDirectory"){
-						_user.Properties["homeDirectory"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "HomeDrive"){
-						_user.Properties["homeDrive"].Value = kvp.Value;
-					}
-				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateProfile), e.Message);
+			if(UserExists(nameof(UpdateProfile)) == false){
 				return false;
+			};
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "ProfilePath"){
+					AddStackMessage("Updating ProfilePath to: " + kvp.Value);
+					_user.Properties["profilePath"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "ScriptPath"){
+					_user.Properties["scriptPath"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "HomeDirectory"){
+					_user.Properties["homeDirectory"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "HomeDrive"){
+					_user.Properties["homeDrive"].Value = kvp.Value;
+				}
 			}
+			if(SaveChanges(nameof(UpdateProfile))){
+				return true;
+			}
+			return false;
 		}
 
 		//Updates the Account tab
 		public bool UpdateAccount(Dictionary<string, string> Parameters){
+			if(UserExists(nameof(UpdateAccount)) == false){
+				return false;
+			};
 			if(_user == new DirectoryEntry()){
 				SetExceptionMessage(nameof(UpdateAccount), "User entry not set. Pleae run SetOU()");
 				return false;
 			}
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "UPN"){
-						_user.Properties["userPrincipalName"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "AccountName"){
-						_user.Properties["samAccountName"].Value = kvp.Value;
-					}
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "UPN"){
+					_user.Properties["userPrincipalName"].Value = kvp.Value;
 				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateAccount), e.Message);
-				return false;
+				else if(kvp.Key == "AccountName"){
+					_user.Properties["samAccountName"].Value = kvp.Value;
+				}
 			}
+			if(SaveChanges(nameof(UpdateAccount))){
+				return true;
+			}
+			return false;
 		}
 
 		//Updates the Address tab
 		public bool UpdateAddress(Dictionary<string, string> Parameters){
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "Street"){
-						_user.Properties["streetAddress"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "POBox"){
-						_user.Properties["postOfficeBox"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "City"){
-						_user.Properties["l"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "State"){
-						_user.Properties["st"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "PostalCode"){
-						_user.Properties["postalCode"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Country"){
-						//sets Exchange location for license assignment
-						_user.Properties["msExchUsageLocation"].Value = kvp.Value;
-						//sets the AD country
-						_user.Properties["c"].Value = kvp.Value;
-					}
-				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateAddress), e.Message);
+			if(UserExists(nameof(UpdateAddress)) == false){
 				return false;
+			};
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "Street"){
+					_user.Properties["streetAddress"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "POBox"){
+					_user.Properties["postOfficeBox"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "City"){
+					_user.Properties["l"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "State"){
+					_user.Properties["st"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "PostalCode"){
+					_user.Properties["postalCode"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Country"){
+					//sets Exchange location for license assignment
+					_user.Properties["msExchUsageLocation"].Value = kvp.Value;
+					//sets the AD country
+					_user.Properties["c"].Value = kvp.Value;
+				}
 			}
+			if(SaveChanges(nameof(UpdateAddress))){
+				return true;
+			}
+			return false;
 		}
 
 		//Updates the General tab
 		public bool UpdateGeneral(Dictionary<string, string> Parameters){
-			try{
-				foreach(var kvp in Parameters){
-					if(kvp.Key == "FirstName"){
-						_fullName = kvp.Value;
-						_user.Properties["givenName"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "LastName"){
-						_fullName += " " + kvp.Value;
-						_user.Properties["sn"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "DisplayName"){
-						_user.Properties["displayName"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Initials"){
-						_user.Properties["initials"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Description"){
-						_user.Properties["description"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Office"){
-						_user.Properties["physicalDeliveryOfficeName"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Email"){
-						_upn = kvp.Value;
-						_user.Properties["mail"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "PhoneNumber"){
-						_user.Properties["telephoneNumber"].Value = kvp.Value;
-					}
-					else if(kvp.Key == "Website"){
-						_user.Properties["wWWHomePage"].Value = kvp.Value;
-					}
-				}
-				_user.CommitChanges();
-				return true;
-			} catch(Exception e){
-				SetExceptionMessage(nameof(UpdateGeneral), e.Message);
+			if(UserExists(nameof(UpdateGeneral)) == false){
 				return false;
 			}
+			foreach(var kvp in Parameters){
+				if(kvp.Key == "FirstName"){
+					_fullName = kvp.Value;
+					_user.Properties["givenName"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "LastName"){
+					_fullName += " " + kvp.Value;
+					_user.Properties["sn"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "DisplayName"){
+					_user.Properties["displayName"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Initials"){
+					_user.Properties["initials"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Description"){
+					_user.Properties["description"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Office"){
+					_user.Properties["physicalDeliveryOfficeName"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Email"){
+					_upn = kvp.Value;
+					_user.Properties["mail"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "PhoneNumber"){
+					_user.Properties["telephoneNumber"].Value = kvp.Value;
+				}
+				else if(kvp.Key == "Website"){
+					_user.Properties["wWWHomePage"].Value = kvp.Value;
+				}
+			}
+			if(SaveChanges(nameof(UpdateGeneral))){
+				return true;
+			}
+			return false;
+		}
+
+		//determines if a path is valid or not
+		public bool ValidOU(string Path){
+			AddStackMessage("Verifying that the path is valid: "+ Path);
+			if(DirectoryEntry.Exists(Path)){
+				AddStackMessage("Path is valid.");
+				return true;
+			}
+			AddStackMessage("Path is not valid.");
+			return false;
+		}
+
+		//creates an AD user inside of the specified OU
+		//if this returns false/exception than either the name is not valid or OU is not valid
+		public bool CreateADUser(string Name){
+			AddStackMessage("Creating AD User: " + Name);
+			if(ValidOU(_userOU.Path)){
+				_user = _userOU.Children.Add("CN=" + _fullName, "user");
+				_user.CommitChanges();
+				SetPassword(CreateSecurePassword(60));
+				AddStackMessage("AD User successfully created:" + _user.Path);
+				return true;
+			}
+			UserEntryException(nameof(CreateADUser));
+			return false;
 		}
 
 		//use this if you want to be lazy and let the script handle everything(easiest way to use IMO)
 		//Creates the user and passes all parameter values into the UpdateTab() methods
 		public bool LazyCreateADUser(Dictionary<string, string> AllParameters){
-			if(_userOU == new DirectoryEntry()){
-				UserEntryException(nameof(LazyCreateADUser));
-				return false;
-			}
+			AddStackMessage("Beginning Lazy AD Creation");
+			AddStackMessage("Checking that required parameters have been set");
 			foreach(var kvp in AllParameters){
 				if(kvp.Key == "FirstName"){
+					AddStackMessage("First Name found");
 					_fullName = kvp.Value;
 				}
 				else if(kvp.Key == "LastName"){
+					AddStackMessage("Last Name found");
 					_fullName += " " + kvp.Value; 
 				}
+				else if(kvp.Key == "UPN"){
+					AddStackMessage("UPN found");
+					_upn = kvp.Value;
+				}
+				else if(kvp.Key == "Username"){
+					AddStackMessage("Username found");
+					_username = kvp.Value;
+				}
 			}
-			if(_fullName != ""){
-				_user = _userOU.Children.Add("CN=" + _fullName, "User");
-			} else{
-				RequiredParametersException(nameof(LazyCreateADUser));
-			}
-			if(_user != new DirectoryEntry()){
-				UpdateAccount(AllParameters);
-				SetPassword(CreateSecurePassword(60));
-				UpdateGeneral(AllParameters);
-				UpdateAddress(AllParameters);
-				UpdateProfile(AllParameters);
-				UpdateOrganization(AllParameters);
-				return true;
+			AddStackMessage("Validating Full Name: " + _fullName);
+			if(CreateADUser(_fullName)){
+				bool account = UpdateAccount(AllParameters);
+				bool password = SetPassword(CreateSecurePassword(60));
+				bool general = UpdateGeneral(AllParameters);
+				bool address = UpdateAddress(AllParameters);
+				bool profile = UpdateProfile(AllParameters);
+				bool org = UpdateOrganization(AllParameters);
+				if(account && password && general && address && profile && org){
+					return true;
+				}
+				return false;
 			}
 			RequiredParametersException(nameof(LazyCreateADUser));
 			return false;
-		}
-
-		//creates a user instance inside of the specified OU instance and sets a rnadom password
-		public bool CreateADUser(Dictionary<string, string> Parameters)
-		{
-				if(_userOU == new DirectoryEntry()){
-					SetExceptionMessage(nameof(CreateADUser), "UserOU was not set. Please run SetOU() first");
-					return false;
-				}	
-				if(_fullName != ""){
-					_user = _userOU.Children.Add("CN=" + _fullName, "User");
-				} else{
-					RequiredParametersException(nameof(CreateADUser));
-				}
-				if(_user != new DirectoryEntry()){
-					UpdateAccount(Parameters);
-					SetPassword(CreateSecurePassword(60));
-					return true;
-				}
-				RequiredParametersException(nameof(CreateADUser));
-				return false;
 		}
 	}
 }
