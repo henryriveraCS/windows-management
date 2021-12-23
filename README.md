@@ -56,7 +56,7 @@ if(connected){
         //assign them the license
         graph.AssignLicenseToUser(licensesToAssign, UPN);
         //add them to groups
-        graph.AssignGroupToUser(UPN, groups);
+        graph.AddAADUser(UPN, groups);
         //john@company.com now has a AAD premium P2 license and is in Group1 + Group2
     }
 }
