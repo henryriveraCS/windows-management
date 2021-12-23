@@ -22,14 +22,6 @@
 </ul>
 <br>
 
-<h2>TODO:</h2>
-<ul>
-  <li>Allow deletion of AD user instance given a UPN</li>
-  <li>Allow removal of licenses via graphprovider</li>
-  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
-</ul>
-
-
 <h2>Add User to Mail-Enabled Security Group via Powershell:</h2>
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
 <p>Open powershell <code>cd</code> into the directory where the file is saved and run:</p>
@@ -101,5 +93,12 @@ if(connected){
 //connection failed - print error to find out why
 Console.WriteLine(adUser.GetExceptionMessage());
 ```
+
+<h2>TODO:</h2>
+<ul>
+  <li>Allow deletion of AD user instance given a UPN</li>
+  <li>Allow removal of licenses via graphprovider</li>
+  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
+</ul>
 
 <p>All code is written under the MIT license. Use at your own discretion.</p>
