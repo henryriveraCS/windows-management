@@ -27,7 +27,8 @@ namespace SampleNamespace
 			return graphClient;
 	    }
 
-	    //this is used to sign in a user to a graph API - it will prompt for MFA if enabled
+	    //this is used to sign in a user to a graph API using a device code - it will prompt for MFA if enabled
+		//see other possible TokenCredential Examples below
 	    public bool Connect(List<string> Scopes, string TenantID, string ClientID){
 			var options = new TokenCredentialOptions{
 		    		AuthorityHost = AzureAuthorityHosts.AzurePublicCloud
@@ -72,10 +73,23 @@ namespace SampleNamespace
 			return user;
 		}
 
+		//remove user from all passed Groups
+		public async Task<bool> RemoveAADUser(User user, List<string> Groups){
+			if(Groups != new List<string>() && user != null){
+				foreach(string group in Groups){
+					await graphClient.Groups[group].Members.References
+						.Request()
+						.DeleteAsync(user);
+				}
+				return true;
+			}
+			return false;
+	    }
+
 		//NOTE this only works for specific distribution groups
 		//See ./AddUserToAADGroup.ps1 for adding users to mail-enabled security groups
-		//assigns all passed Microsoft 365 groups to the specified user
-		public async Task<bool> AssignAADGroupsToUser(User user, List<string> Groups){
+		//assigns user to all passed Groups
+		public async Task<bool> AddAADUser(User user, List<string> Groups){
 			if(Groups != new List<string>() && user != null){
 				foreach(string group in Groups){
 					await graphClient.Groups[group].Members.References
