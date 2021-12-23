@@ -22,14 +22,6 @@
 </ul>
 <br>
 
-<h2>TODO:</h2>
-<ul>
-  <li>Allow deletion of AD user instance given a UPN</li>
-  <li>Allow removal of licenses via graphprovider</li>
-  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
-</ul>
-
-
 <h2>Add User to Mail-Enabled Security Group via Powershell:</h2>
 <p>Install the <strong>ExchangeOnlineManagement</strong> module.</p>
 <p>Open powershell <code>cd</code> into the directory where the file is saved and run:</p>
@@ -75,7 +67,7 @@ if(connected){
 <p>See <code>ManageADUser.cs</code> for the libraries required.</p>
 
 ```csharp
-//Create a user called "John Smith" with the e-mail address and UPN "john@company.com"
+//Create a user called "John Smith" with the username "john" and e-mail address+UPN "john@company.com"
 //inside of OU: Company.COM/America/Washington/Sales/Users
 ActiveDirectoryUser adUser = new ActiveDirectoryUser();
 bool connected = adUser.Connect("Admin", "Password", "Company", "COM");
@@ -88,6 +80,8 @@ if(connected){
         {"FirstName", "John"},
         {"LastName", "Smith"}
     };
+    //points internal directory to correct entry
+    adUser.ChangeOU(myOU);
     bool success = adUser.LazyCreateADUser(params);
     if(success){
       //John Smith is now a user in your OU. Handle success from here
@@ -95,7 +89,16 @@ if(connected){
       //An error occurred, you can get the error message to see what went wrong
       Console.WriteLine(adUser.GetExceptionMessage());
     }
-}  
+}
+//connection failed - print error to find out why
+Console.WriteLine(adUser.GetExceptionMessage());
 ```
+
+<h2>TODO:</h2>
+<ul>
+  <li>Allow deletion of AD user instance given a UPN</li>
+  <li>Allow removal of licenses via graphprovider</li>
+  <li><strong>Make AD calls linux compatible</strong> :computer:</li>
+</ul>
 
 <p>All code is written under the MIT license. Use at your own discretion.</p>
