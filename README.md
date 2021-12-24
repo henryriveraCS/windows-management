@@ -13,8 +13,9 @@
 <h3>ManageADUser.cs</h3>
 <ul>
   <li>Create users in a specified AD OU</li>
-  <li>Populate the AD User information <code>General, Account, Member of, Profile, etc</code> while creating the user(will be separated into a separate function soon)</li>
-  <li>Generate a cryptographically secure password for a user.</li>
+  <li>Generate a cryptographically secure password for a user. </li>
+  <li>Populate the AD User Tab information <code>General, Account, Member of, Profile, etc</code> while creating/managing the user object.</li>
+  <li>Add user into AD groups</li>
 </ul>
 <h3>AddUserToAADGroup.ps1</h3>
 <ul>
@@ -82,6 +83,9 @@ if(connected){
     };
     //points internal directory to correct entry
     adUser.ChangeOU(myOU);
+    //this method is the easier way of updating all values. Just pass all params into this function.
+    //If you want more control over what is updated you can manually 
+    //call CreateADUser() and then UpdateProfile(), UpdateGeneral(), etc
     bool success = adUser.LazyCreateADUser(params);
     if(success){
       //John Smith is now a user in your OU. Handle success from here
