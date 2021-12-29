@@ -24,10 +24,8 @@ namespace SampleNamespace
 		private string _tld = "";
 		private string _username = "";
 		private string _upn = "";
-		//OU's pointing to base of AD + user 
 		private DirectoryEntry _baseOU = new DirectoryEntry();
 		private DirectoryEntry _userOU = new DirectoryEntry();
-		//Entry representing the user instance
 		private DirectoryEntry _user = new DirectoryEntry();
 
 		//used to retrieve the class name for exception messages
@@ -219,47 +217,13 @@ namespace SampleNamespace
 			DirectoryEntries _tmpOU = _baseOU.Children;
 			for(int current=0; current < totalOUCount; current ++){
 				AddStackMessage("SEARCHING FOR NEXT OU:" + OUList[current]);
-				//_userOU = _tmpOU.Find("CN=" + OUList[current], _baseOU.SchemaClassName);
 				_userOU = _tmpOU.Find("OU=" + OUList[current], "organizationalUnit");
 				_tmpOU = _userOU.Children;
 			}
 			return true;
 		}
-		/*
-		When you create the dictionary, pass along the each key pair value in the format of "Key Name": "KeyValue"
-		REQUIRED PARAMETERS:
-			"Username",
-			"Email",
-			"FirstName",
-			"LastName"
-		Account: 
-			"Username": "Username of the AD Object"
-			"Email": "Email address of the AD Object"
-		General:
-			"FirstName": "First name of AD Object"
-			"PrefName": "Nickname of AD Object"
-			"MiddleName": "Middle name of AD Object"
-			"Last Name": "Last Name of AD Object"
-		Address:
-			"Street": "Street address here"
-			"POBox": "PO Box address here"
-			"State": "State/Province here"
-			"ZipCode": "zip/postal code here"
-			"Country": "2 letter country code - see ISO 3166 https://www.iso.org/obp/ui/#search"
-		Profile:
-			"LogonScript": "logon script name here"
-			"HomeDrive": "Letter to map home drive to here"
-			"HomeDirectory": "full path to directory server here"
-			Organization:
-			"JobTitle": "Job title here"
-			"Department": "Department title here"
-			"CompanyName": "Company Name here"
-		Member Of:
-				*See AssignLocalGroupsToUser for more information*
-		*/
 
-		//used to check that a user instance exists. Returns true if yes,
-		//sets an exception method and returns false if no
+		//used to check that a user instance exists.
 		private bool UserExists(string MethodName){
 			if(_user != new DirectoryEntry() && _user != _userOU){
 				AddStackMessage("User does exists. Called by: " + MethodName);
@@ -351,6 +315,7 @@ namespace SampleNamespace
 			}
 			return false;
 		}
+
 		//updates Profile tab
 		public bool UpdateProfile(Dictionary<string, string> Parameters){
 			if(UserExists(nameof(UpdateProfile)) == false){
@@ -425,9 +390,7 @@ namespace SampleNamespace
 					_user.Properties["postalCode"].Value = kvp.Value;
 				}
 				else if(kvp.Key == "Country"){
-					//sets Exchange location for license assignment
 					_user.Properties["msExchUsageLocation"].Value = kvp.Value;
-					//sets the AD country
 					_user.Properties["c"].Value = kvp.Value;
 				}
 			}
@@ -482,7 +445,6 @@ namespace SampleNamespace
 		public bool ValidOU(){
 			AddStackMessage("Verifying that the path is valid: "+ _userOU.Path);
 			var exists = _userOU.Guid.ToString();
-			//if the GUID of the userOU exists then we assume that the OU is valid
 			if(exists != null || exists != ""){
 				AddStackMessage("Path is valid.");
 				return true;
@@ -492,7 +454,6 @@ namespace SampleNamespace
 		}
 
 		//creates an AD user inside of the specified OU
-		//if this returns false/exception than either the name is not valid or OU is not valid
 		public bool CreateADUser(string Name){
 			AddStackMessage("Creating AD User: " + Name);
 			if(ValidOU()){
