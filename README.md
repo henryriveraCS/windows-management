@@ -74,7 +74,7 @@ ActiveDirectoryUser adUser = new ActiveDirectoryUser();
 bool connected = adUser.Connect("Admin", "Password", "Company", "COM");
 if(connected){
     List<string> myOU = new List<string>{"America", "Washington", "Sales", "Users"};
-    Dictionary<string,string> param; = new Dictionary<string,string>{
+    Dictionary<string,string> params = new Dictionary<string,string>{
         {"UPN", "john@company.com"},
         {"Email", "john@company.com"},
         {"Username", "john"},
