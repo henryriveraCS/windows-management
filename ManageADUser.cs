@@ -1,19 +1,13 @@
 using System;
-using System.Linq; //Enumerable.Any
-//using System.Text;
+using System.Linq;
 using System.Collections.Generic;
-//Used to check that the code is running under Windows OS
 using System.Runtime.Versioning;
-//AD calls such as DirectoryEntry
 using System.DirectoryServices;
 using System.DirectoryServices.AccountManagement;
-//for password generation
 using System.Security.Cryptography;
 
-//class to insert/verify data from the active directory instance
 namespace SampleNamespace
 {
-	//class to manage AD users
 	[SupportedOSPlatformAttribute("windows")]
 	public class ActiveDirectoryUser
 	{
